@@ -1,0 +1,92 @@
+#!/usr/bin/env node
+
+"use strict";
+
+if(process.version !== 'v4.4.3') {
+	console.error('node.js v4.4.3 is required');
+	
+	process.exit(1);
+}
+
+const program = require('commander');
+const fs = require('fs');
+const jsdiff = require('diff');
+const metadata = require('./package.json');
+const path = require('path');
+const readdir = require('readdir').read;
+const spawn = require('child_process').spawnSync;
+
+function test(problem, input) { // {{{
+	console.log(`\x1b[38;5;33m${problem} #${input}:\x1b[39m`);
+	
+	const prefix = input < 10 ? '0' + input : input.toString();
+	
+	const begin = Date.now();
+	
+	const child = spawn('node', [path.join('.', problem, 'code.js')], {
+		input: fs.readFileSync(path.join('.', problem, prefix + '-input.txt'), {
+			encoding: 'utf8'
+		}).replace(/\n$/, ''),
+		stdio: ['pipe', 'pipe', process.stderr]
+	});
+	
+	const time = Date.now() - begin;
+	
+	const stdout = child.stdout.toString().replace(/\n$/, '');
+	const output = fs.readFileSync(path.join('.', problem, prefix + '-output.txt')).toString().replace(/\n$/, '');
+	
+	if(output === stdout) {
+		console.log(`\x1b[38;5;11m#${input}: ✓ OK\x1b[39m - ${time} ms`);
+		console.log(`---`);
+		
+		return time;
+	}
+	else {
+		console.error(`\x1b[38;5;202m#${input}: ✖ FAILED\x1b[39m`);
+		
+		console.log('output:');
+		console.log(stdout)
+		
+		console.log('expected:');
+		console.log(output);
+		
+		//console.log('diff:');
+		//console.log(jsdiff.diffLines(stdout, output));
+		
+		console.log(`---`);
+		
+		return -1;
+	}
+} // }}}
+
+program
+	.version(metadata.version)
+	.usage('<problem> [input]')
+	.parse(process.argv);
+
+if(program.args.length === 0) {
+	program.outputHelp();
+	process.exit(1);
+}
+else if(program.args.length === 1) {
+	readdir(path.join('.', program.args[0]), ['*input.txt'], function(error, files) { // {{{
+		let time = -1;
+		
+		let t;
+		for(let i = 0; i < files.length; i++) {
+			if((t = test(program.args[0], parseInt(files[i].split('-')[0]))) === -1) {
+				time = -1;
+			}
+			else {
+				time += t;
+			}
+		}
+		
+		if(time !== -1) {
+			console.log(`time: ${time} ms`);
+		}
+	}); // }}}
+}
+else {
+	test(program.args[0], parseInt(program.args[1]));
+}

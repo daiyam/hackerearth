@@ -1,0 +1,122 @@
+#!/usr/bin/env node
+
+"use strict";
+
+if(process.version !== 'v4.4.3') {
+	console.error('node.js v4.4.3 is required');
+	
+	process.exit(1);
+}
+
+const fs = require('zokugun.web.scraper/node_modules/zokugun.node.vfs.file').sync;
+const headers = require('./headers.json');
+const metadata = require('./package.json');
+const Queue = require('zokugun.web.scraper/node_modules/zokugun.lang.flow.queue').QueueFA;
+const program = require('commander');
+const Scraper = require('zokugun.web.scraper');
+const vfs = require('zokugun.web.scraper/node_modules/zokugun.node.vfs').sync;
+
+require('zokugun.web.scraper/node_modules/zokugun.lang.html');
+require('zokugun.web.scraper/node_modules/zokugun.node.vfs.http')
+
+function copy(source, destination, callback) { // {{{
+	vfs.get(source.replace(/&amp;/g, '&')).async.readFile('', function(error, data) {
+		if(error) {
+			callback(error)
+		}
+		else {
+			fs.writeFile(destination, data.replace(/\r/g, ''), {
+				bump: true
+			});
+			
+			process.stdout.write('.');
+			
+			callback();
+		}
+	});
+} // }}}
+
+function download(submission) { // {{{
+	const scraper = new Scraper({
+		url: 'https://www.hackerearth.com/submission/%(submission)y/',
+		headers: headers,
+		fields: {
+			code: {
+				url: "$('#submission-iframe-light').attr('src').replace('/','https://www.hackerearth.com/')",
+				query: "pre"
+			},
+			path: "$('.heading-3 a').attr('href')",
+			files: {
+				request: {
+					url: "https://www.hackerearth.com/response/submission/%(submission)y/AJAX/",
+					rule: ".submission-table tr:not(.heading)",
+					fields: {
+						input: "$('td:nth-child(1) a', el).attr('href')",
+						output: "$('td:nth-child(8) a', el).attr('href')"
+					}
+				}
+			}
+		}
+	});
+	
+	scraper.run(function(error, data) {
+		if(error) {
+			console.error(error.stack)
+		}
+		else {
+			const path = data.path.split('/');
+			
+			path[0] = '.'
+			
+			if(path[1] === 'practice') {
+				path[1] = 'practice-problems'
+			}
+			
+			path.splice(5, 2);
+			path.splice(6, 1);
+			
+			console.log(`path: \x1b[38;5;33m${fs.join.apply(fs, path)}\x1b[39m`);
+			
+			const dir = fs.resolve.apply(fs, path);
+			
+			fs.writeFile(fs.join(dir, 'code.js'), data.code, {
+				bump: true
+			});
+			
+			const q = new Queue(function(error) {
+				process.stdout.write('\n');
+				
+				if(error) {
+					console.error(error.stack)
+				}
+				else {
+					console.log(`\x1b[38;5;11m✓ OK\x1b[39m`);
+				}
+			});
+			
+			console.log(`tests: ${data.files.length}`);
+			
+			for(var i = 0; i < data.files.length; i++) {
+				q.push(copy.curry(data.files[i].input, fs.join(dir, `${(i + 1).zeroPad(2)}-input.txt`), q.go));
+				q.push(copy.curry(data.files[i].output, fs.join(dir, `${(i + 1).zeroPad(2)}-output.txt`), q.go));
+			}
+			
+			q.next();
+		}
+	}, {
+		submission: submission
+	});
+} // }}}
+
+program
+	.version(metadata.version)
+	.usage('<submission>')
+	.parse(process.argv);
+
+if(program.args.length === 0) {
+	program.outputHelp();
+	process.exit(1);
+}
+else {
+	download(program.args[0]);
+}

@@ -1,0 +1,25 @@
+{
+	"name": "@daiyam/hackerearth",
+	"description": "",
+	"version": "0.1.0",
+	"author": {
+		"name": "Baptiste Augrain",
+		"email": "daiyam@zokugun.org"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/daiyam/hackerearth.git"
+	},
+	"bugs": {
+		"url": "https://github.com/daiyam/hackerearth/issues"
+	},
+	"homepage": "https://github.com/daiyam/hackerearth",
+	"license": "MIT",
+	"dependencies": {
+		"commander": "",
+		"diff": "",
+		"readdir": ""
+	},
+	"scripts": {
+	}
+}
