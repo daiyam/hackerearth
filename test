@@ -42,16 +42,22 @@ function test(problem, input) { // {{{
 		return time;
 	}
 	else {
-		console.error(`\x1b[38;5;202m#${input}: ✖ FAILED\x1b[39m`);
+		console.error(`\x1b[38;5;202m#${input}: ✖ FAILED\x1b[39m - ${time} ms`);
 		
-		console.log('output:');
-		console.log(stdout)
+		if(program.O) {
+			console.log('output:');
+			console.log(stdout)
+		}
 		
-		console.log('expected:');
-		console.log(output);
+		if(program.X) {
+			console.log('expected:');
+			console.log(output);
+		}
 		
-		//console.log('diff:');
-		//console.log(jsdiff.diffLines(stdout, output));
+		if(program.D) {
+			console.log('diff:');
+			console.log(jsdiff.diffLines(stdout, output));
+		}
 		
 		console.log(`---`);
 		
@@ -61,7 +67,10 @@ function test(problem, input) { // {{{
 
 program
 	.version(metadata.version)
-	.usage('<problem> [input]')
+	.usage('[options] <problem> [input]')
+	.option('-d', 'print differences between output and expected')
+	.option('-o', 'print output')
+	.option('-x', 'print expected')
 	.parse(process.argv);
 
 if(program.args.length === 0) {
@@ -70,19 +79,19 @@ if(program.args.length === 0) {
 }
 else if(program.args.length === 1) {
 	readdir(path.join('.', program.args[0]), ['*input.txt'], function(error, files) { // {{{
-		let time = -1;
+		let time = 0;
 		
 		let t;
 		for(let i = 0; i < files.length; i++) {
 			if((t = test(program.args[0], parseInt(files[i].split('-')[0]))) === -1) {
-				time = -1;
+				time = 0;
 			}
 			else {
 				time += t;
 			}
 		}
 		
-		if(time !== -1) {
+		if(time !== 0) {
 			console.log(`time: ${time} ms`);
 		}
 	}); // }}}
